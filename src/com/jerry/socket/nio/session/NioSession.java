@@ -209,14 +209,24 @@ public abstract class NioSession implements INioSession {
     
     public Object syncSendMessage(Object message, char state, int operType, long sessionId, int timeOut) throws IOException,
     InterruptedException {
-
+//
+//    System.out.println("this.getChannel().socket().getSendBufferSize(): " + this.getChannel().socket().getSendBufferSize());
+//    System.out.println("this.getChannel().socket().getReceiveBufferSize(): " + this.getChannel().socket().getReceiveBufferSize());
     Message messageResult = null;
     byte[] messageTemp = packMessage(message, state, operType, sessionId);
-    int writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
-    while (writeSize <= 0) {
-        writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
-        Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
-    }
+    ByteBuffer bytemtemp = ByteBuffer.wrap(messageTemp);
+//    int writeSize = this.getChannel().write(bytemtemp);
+//    System.out.println("writeSize: " + writeSize);
+//    while (writeSize <= 0) {
+//        writeSize = this.getChannel().write(bytemtemp);
+//        Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
+//    }
+    
+    //针对缓冲区写满，导致writesize 大于零，但是没有把所有字节全部写成功的情况
+//    if (writeSize > 0 && bytemtemp.remaining() > 0 ) {
+//    	sendMessage(bytemtemp);
+//    }
+    sendMessage(bytemtemp);
 
     long nowMin = System.currentTimeMillis();
     boolean isContinue = true;
@@ -243,6 +253,22 @@ public abstract class NioSession implements INioSession {
     return this.getNioMegWrapper().dealWithMessage(messageResult);
 }
     
+    public void sendMessage(ByteBuffer bytemtemp) throws IOException, InterruptedException {
+    	int writeSize = this.getChannel().write(bytemtemp);
+    	while (writeSize <= 0) {
+            writeSize = this.getChannel().write(bytemtemp);
+            Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
+        }
+    	
+//    	System.out.println("writeSize: " + writeSize);
+//      System.out.println(bytemtemp.limit() + " bytemtemp.limit() : " + bytemtemp.capacity() + " -- " + bytemtemp.remaining() + " -- " + bytemtemp.limit()+ " -- " + bytemtemp.position());
+        
+    	Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
+        if (writeSize > 0 && bytemtemp.remaining() > 0 ) {
+        	sendMessage(bytemtemp);
+        }
+    }
+    
 
     public Object syncSendMessage(Object message, char state, int operType) throws IOException, InterruptedException {
 
@@ -265,12 +291,13 @@ public abstract class NioSession implements INioSession {
     public void asyncSendMessage(Object message, char state, int operType, long sessionId) throws IOException,
         InterruptedException {
         byte[] messageTemp = packMessage(message, state, operType, sessionId);
-
-        int writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
-        while (writeSize <= 0) {
-            Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
-            writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
-        }
+        ByteBuffer bytemtemp = ByteBuffer.wrap(messageTemp);
+        sendMessage(bytemtemp);
+//        int writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
+//        while (writeSize <= 0) {
+//            Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
+//            writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
+//        }
     }
 
     /**

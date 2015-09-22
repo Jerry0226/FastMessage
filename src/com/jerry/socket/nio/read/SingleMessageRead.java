@@ -121,20 +121,25 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                 //此处后面版本考虑如何复用ByteBuffer 出来的内存池
                 ByteBuffer messageBody = ByteBuffer.allocate(length);
                 
+//                System.out.println("sessionId: " + sessionId + " -- length----------------: " + length);
                 
                 while (channel.read(messageBody) > 0) {
                     
+//                	System.out.println("messageBody.capacity(): " + messageBody.capacity() + " -- messageBody.remaining(): " + messageBody.remaining());
                     if (messageBody.remaining() > 0) {
                         
                         //超过线程读取的持续时间就释放读取线程，防止出现别的客户端长时间等待的情况发生
                         if ((System.currentTimeMillis() - nowMin) > FastMessage.RECEIVEMESSAGETIMEOUT) {
                             //超时时需要中断客户端，防止出现读取消息的异常
+                        	System.out.println("超时");
                         	nioSession.getHandler().exceptionCaught(nioSession, new Exception("TimeOutException"));
                             break;
                         }
                         Thread.sleep(FastMessage.RECEIVEMESSAGEWAITTIME);
                         continue;
                     }
+                    
+                   
                     
                     byte[] byteBody = new byte[length];
                     messageBody.rewind();
@@ -145,6 +150,10 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                     //一次消息体读取完成后，跳出，重新读取下一个消息体
                     break;
                 }
+                
+                
+                
+                
                 
                 //消息的最后设置消息的状态为可以读取的状态
                 if (FastMessage.MESSAGEEND == state) {
