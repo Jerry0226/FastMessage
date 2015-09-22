@@ -60,7 +60,6 @@ public class NioSocketConnector implements NioConnector {
         channel = SocketChannel.open();
         sel = Selector.open();
         selRead = Selector.open();
-
         channel.configureBlocking(false);
         channel.register(sel, SelectionKey.OP_CONNECT);
         channel.connect(address);
@@ -82,16 +81,7 @@ public class NioSocketConnector implements NioConnector {
                 // 获取创建通道选择器事件键的套接字通道
                 channel = (SocketChannel) key.channel();
 
-                //System.out.println("key.interestOps(): " + key.interestOps());
                 if ((key.readyOps() & SelectionKey.OP_CONNECT) == SelectionKey.OP_CONNECT) {
-
-                    
-                    // 如果正在连接，则完成连接
-//                    if (channel.isConnectionPending()) {
-//                        //--------------------------------------------------注意，已经完成，方法waitConnection--------------------------------------------------
-//                        //这里如果超时的话会存在问题，此处增加超时机制，循环等待
-//                        channel.finishConnect();
-//                    }
                     
                     waitConnection(this.timeOut, channel);
 
@@ -142,7 +132,9 @@ public class NioSocketConnector implements NioConnector {
                 isWait = false;
             }
             catch (IOException e) {
+            	//连接异常时，需要关闭相关的文件操作句柄，如channel，selector等
                 if (timeOut == 0l||(System.currentTimeMillis() - beginTime) > (timeOut)) {
+                	close();
                     throw e;
                 }
             }
@@ -236,6 +228,26 @@ public class NioSocketConnector implements NioConnector {
     public NioSession getNioSession() {
         return nioSession;
     }
+
+	public void close() {
+		try {
+			if (channel != null) {
+				this.channel.close();
+				this.channel = null;
+			}
+			if(sel != null) {
+				sel.close();
+				sel = null;
+			}
+			if(selRead != null) {
+				selRead.close();
+				selRead = null;
+			}
+			
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
 
 }

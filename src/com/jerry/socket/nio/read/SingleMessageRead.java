@@ -22,7 +22,7 @@ public final class SingleMessageRead implements MessageRead, Runnable {
     private NioSession nioSession;
     
     /**长度，状态('0' 未完成，'1'，完成)，sessionId, messageType*/
-    private int buffSizeHeader = 4 + 2 + 8 + 4;
+    private final int buffSizeHeader = 4 + 2 + 8 + 4;
     
     
     
@@ -121,17 +121,16 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                 //此处后面版本考虑如何复用ByteBuffer 出来的内存池
                 ByteBuffer messageBody = ByteBuffer.allocate(length);
                 
-//                System.out.println("sessionId: " + sessionId + " -- length----------------: " + length);
-                
                 while (channel.read(messageBody) > 0) {
                     
 //                	System.out.println("messageBody.capacity(): " + messageBody.capacity() + " -- messageBody.remaining(): " + messageBody.remaining());
-                    if (messageBody.remaining() > 0) {
+                    
+                	if (messageBody.remaining() > 0) {
                         
                         //超过线程读取的持续时间就释放读取线程，防止出现别的客户端长时间等待的情况发生
                         if ((System.currentTimeMillis() - nowMin) > FastMessage.RECEIVEMESSAGETIMEOUT) {
                             //超时时需要中断客户端，防止出现读取消息的异常
-                        	System.out.println("超时");
+                        	System.out.println("messageBody.remaining() TimeOut");
                         	nioSession.getHandler().exceptionCaught(nioSession, new Exception("TimeOutException"));
                             break;
                         }
