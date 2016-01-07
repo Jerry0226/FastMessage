@@ -5,6 +5,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 
 //import com.test.socket.nio.message.Message;
+import com.jerry.socket.nio.message.NioMessageFacade;
 import com.jerry.socket.nio.message.filterchain.INioFilterChain;
 import com.jerry.socket.nio.service.NioHandler;
 
@@ -47,4 +48,8 @@ public interface INioSession {
     public void setHandler(NioHandler niohandler);
     
     public NioHandler getHandler();
+    
+    public void setNioMessageFacade(NioMessageFacade nioMessFacade);
+    
+    public NioMessageFacade getNioMessageFacade();
 }

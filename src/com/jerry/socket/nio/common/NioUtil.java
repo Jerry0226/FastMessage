@@ -1,7 +1,25 @@
 package com.jerry.socket.nio.common;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public final class NioUtil {
 
+	/***
+	 * 获取sessionId 保持其唯一性，这个如果是多个客户端向服务端发送此消息那么就存在问题了
+	 * 重复的概率很大，消息的唯一性仅仅通过这个sessionId 来做判断的，没有增加客户端的标记来做
+	 * 区分，暂时不启用
+	 */
+	private static AtomicLong sessionId = new AtomicLong(1l);
+	
+	public static long getNextSessionId() {
+		return sessionId.incrementAndGet();
+	}
+	
+	public static long getCurrentSessionId() {
+		return sessionId.get();
+	}
+	
+	
     /**
      * 构造函数私有化
      */

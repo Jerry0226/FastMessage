@@ -21,7 +21,4 @@ public interface NioAcceptor extends INioFastSocket {
     public void bind(int port) throws IOException;
     
     
-    
-    
-    
 }

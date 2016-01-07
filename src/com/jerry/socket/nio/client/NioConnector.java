@@ -12,4 +12,5 @@ public interface NioConnector extends INioFastSocket {
     public NioSession getNioSession();
     public void setConnectTimeOut(long timeOut);
     public long getConnectTimeOut();
+    public void destory();
 }

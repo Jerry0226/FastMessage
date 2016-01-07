@@ -15,20 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * <p>
- * Title: Prodigy
- * </p>
- * <p>
- * Description: 工具类
- * </p>
- * <p>
- * Copyright: Copyright (c) 2005
- * </p>
- * <p>
- * Company: ztesoft
- * </p>
- * 
- * @author fan.zhenzhi
+ * @author chm
  * @version 0.1
  */
 public final class Utils {

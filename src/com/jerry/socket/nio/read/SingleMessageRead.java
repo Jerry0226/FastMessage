@@ -1,15 +1,15 @@
 package com.jerry.socket.nio.read;
 
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
+import com.jerry.socket.nio.FastSocketConstants;
 import com.jerry.socket.nio.common.FastMessage;
 import com.jerry.socket.nio.message.Message;
-import com.jerry.socket.nio.message.NioMessageFacade;
 import com.jerry.socket.nio.message.SimpleMessage;
 import com.jerry.socket.nio.session.NioSession;
-import com.jerry.socket.nio.session.NioSessionMag;
 
 /**
  * 消息读取的抽象方法
@@ -22,7 +22,7 @@ public final class SingleMessageRead implements MessageRead, Runnable {
     private NioSession nioSession;
     
     /**长度，状态('0' 未完成，'1'，完成)，sessionId, messageType*/
-    private final int buffSizeHeader = 4 + 2 + 8 + 4;
+//    private final int buffSizeHeader = 4 + 2 + 8 + 4;
     
     
     
@@ -54,23 +54,38 @@ public final class SingleMessageRead implements MessageRead, Runnable {
             readMessage();
             finish();
         }
-        catch (Exception e) {
+        catch (ClosedChannelException e) {
             //增加错误处理方法
             try {
-                nioSession.getHandler().exceptionCaught(nioSession, e);  
+            	nioSession.destory();
+            	nioSession.getHandler().sessionClosed(nioSession);
+            	e.printStackTrace();
             }
             catch (Exception e1) {
                 e1.printStackTrace();
             }
-            closeSession();
-            NioSessionMag.getInstance().deleteNioSession(nioSession);
         }
+        catch (Exception e) {
+        	//增加错误处理方法
+            try {
+            	nioSession.destory();
+            	nioSession.getHandler().exceptionCaught(nioSession, e);  
+            }
+            catch (Exception e1) {
+                e1.printStackTrace();
+            }
+		}
         
     }
     
+    /**
+     * 读取消息
+     * @return Message 消息
+     * @throws Exception 异常
+     */
     public Message readMessage() throws Exception {
         
-        ByteBuffer buffReadHeader = ByteBuffer.allocate(buffSizeHeader);
+        ByteBuffer buffReadHeader = ByteBuffer.allocate(FastSocketConstants.HEADSIZE);
         boolean isFinish = false;
         
         //一条消息不能读取时间太长，影响别的消息的读取
@@ -82,11 +97,14 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                 
                 //防止读取的报文头不完整
                 int size = channel.read(buffReadHeader);
-                if (buffReadHeader.position() < buffSizeHeader) {
+                if (buffReadHeader.position() < FastSocketConstants.HEADSIZE) {
                     //此处打印当前读取到的数据大小,针对的是关闭主动关闭close 的情况
                     System.out.println("buffReadHeader.position(): " + buffReadHeader.position() + " size: " + size);
                     if (size < 0) {
+                    	nioSession.destory();
                     	nioSession.getHandler().exceptionCaught(nioSession, new Exception("remote channel close"));
+                    	System.out.println("size < 0 break ...");
+                    	break;
                     }
                     continue;
                 }
@@ -109,13 +127,13 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                 	break;
                 }
                 
-                message = NioMessageFacade.getInstance().getMessage(sessionId);
+                message = nioSession.getNioMessageFacade().getMessage(sessionId);
                 if (message == null) {
                     message = new SimpleMessage();
                     message.setSessionId(sessionId);
                     message.setNioSession(nioSession);
                     message.setOperType(messageType);
-                    NioMessageFacade.getInstance().addMessage(message);
+                    nioSession.getNioMessageFacade().addMessage(message);
                 }
                 
                 //此处后面版本考虑如何复用ByteBuffer 出来的内存池
@@ -123,22 +141,22 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                 
                 while (channel.read(messageBody) > 0) {
                     
-//                	System.out.println("messageBody.capacity(): " + messageBody.capacity() + " -- messageBody.remaining(): " + messageBody.remaining());
-                    
                 	if (messageBody.remaining() > 0) {
                         
                         //超过线程读取的持续时间就释放读取线程，防止出现别的客户端长时间等待的情况发生
                         if ((System.currentTimeMillis() - nowMin) > FastMessage.RECEIVEMESSAGETIMEOUT) {
                             //超时时需要中断客户端，防止出现读取消息的异常
                         	System.out.println("messageBody.remaining() TimeOut");
+                        	
+                        	nioSession.destory();
                         	nioSession.getHandler().exceptionCaught(nioSession, new Exception("TimeOutException"));
+                        	
                             break;
                         }
                         Thread.sleep(FastMessage.RECEIVEMESSAGEWAITTIME);
                         continue;
                     }
                     
-                   
                     
                     byte[] byteBody = new byte[length];
                     messageBody.rewind();
@@ -150,10 +168,6 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                     break;
                 }
                 
-                
-                
-                
-                
                 //消息的最后设置消息的状态为可以读取的状态
                 if (FastMessage.MESSAGEEND == state) {
                     message.setReady(true);
@@ -163,6 +177,7 @@ public final class SingleMessageRead implements MessageRead, Runnable {
                 //超过线程读取的持续时间就释放读取线程，防止出现别的客户端长时间等待的情况发生
                 if ((System.currentTimeMillis() - nowMin) > FastMessage.RECEIVEMESSAGETIMEOUT) {
                     //超时时需要中断客户端，防止出现读取消息的异常
+                	nioSession.destory();
                 	nioSession.getHandler().exceptionCaught(nioSession, new Exception("TimeOutException"));
                     break;
                 }
@@ -181,16 +196,6 @@ public final class SingleMessageRead implements MessageRead, Runnable {
             
         }
         return message;
-    }
-    
-    
-    public void closeSession() {
-            try {
-            	nioSession.getHandler().exceptionCaught(nioSession, new Exception("Force destory"));
-            }
-            catch (Exception e) {
-                e.printStackTrace();
-            }
     }
 
 }

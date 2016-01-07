@@ -7,54 +7,40 @@ public final class NioMessageFacade {
     public MessageList<Message> getMessageList() {
         return messageList;
     }
-
-    private NioMessageFacade() {
-    }
-
-    private static NioMessageFacade niomessage = new NioMessageFacade();
     
-    public static synchronized NioMessageFacade getInstance() {
-        if (niomessage == null) {
-            niomessage = new NioMessageFacade();
-        }
-        return niomessage;
-    }
-    
-    /**监控扫描时间间隔*/
-    private static final int MONITORSPANTIME = 1000;
-    
-    static {
-        /**
-         * 监控ConcurrentLinkedQueue 缓冲池中的对象，当对象失效时要删除
-         * 
-         * @author chm
-         */
-        Runnable ra = new Runnable() {
-            /**
-             * 接口方法
-             */
-            public void run() {
-                while (true) {
-                    try {
-                        for (Message message : NioMessageFacade.getInstance().messageList.getMessageList()) {
-                            if (message.isInvalid() || message.isComplete()) {
-                                NioMessageFacade.getInstance().messageList.getMessageList().remove(message);
-                            }
-                        }
-                        Thread.sleep(MONITORSPANTIME);
-                    }
-                    catch (InterruptedException e) {
-                        System.out.println("监控失效对象删除失败");
-                    }
-                }
-            }
-        };
-        
-        Thread td = new Thread(ra);
+    public NioMessageFacade() {
+    	Thread td = new Thread(new MessageMonitor());
         td.setName("MessageList_Clean_Thread");
+        //设置为后台进程，使得在主进程结束后可以自动退出
         td.setDaemon(true);
         td.start();
-    } 
+    }
+    
+    class MessageMonitor implements Runnable {
+    	 /**
+         * 接口方法
+         */
+        public void run() {
+            while (true) {
+                try {
+                    for (Message message : messageList.getMessageList()) {
+                        if (message.isInvalid() || message.isComplete()) {
+                            messageList.getMessageList().remove(message);
+                            System.out.println("Clean Message: " + message);
+                        }
+                    }
+                    Thread.sleep(MONITORSPANTIME);
+                }
+                catch (InterruptedException e) {
+                    System.out.println("监控失效对象删除失败");
+                }
+            }
+        }
+    }
+
+    
+    /**监控扫描时间间隔*/
+    private final int MONITORSPANTIME = 1000;
     
     public synchronized boolean addMessage(Message e) {
         return messageList.addMessageList(e);

@@ -1,5 +1,6 @@
 package com.jerry.socket.nio.message.transfer;
 
+import com.jerry.socket.nio.FastSocketConstants;
 import com.jerry.socket.nio.common.NioUtil;
 
 public class SimplePackMessage implements PackMessage {
@@ -13,7 +14,7 @@ public class SimplePackMessage implements PackMessage {
      * @return byte[] 返回打包后的消息
      */
     public byte[] packMessage(int length, char state, long session,int messageType, byte[] body) {
-        byte[] messageByte = new byte[4 + 2 + 8 + 4 + body.length];
+        byte[] messageByte = new byte[FastSocketConstants.HEADSIZE + body.length];
         System.arraycopy(NioUtil.intToByteArray(length), 0, messageByte, 0, 4);
         System.arraycopy(NioUtil.charToByte(state), 0, messageByte, 4, 2);
         System.arraycopy(NioUtil.long2Bytes(session), 0, messageByte, 6, 8);

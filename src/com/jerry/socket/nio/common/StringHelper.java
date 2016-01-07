@@ -12,16 +12,6 @@ import java.util.List;
 public final class StringHelper {
 
     /**
-     * 待过滤的字符串，次字符串不打印到日志中
-     */
-    private static String[] filterString = new String[] {
-        "java.util.jar.Attributes read", "Duplicate name in Manifest:",
-        "manifest and in the META-INF/MANIFEST.MF entry in the jar file",
-        "that blank lines separate individual sections in both your",
-        "Ensure that the manifest does not have duplicate entries, and"
-    };
-
-    /**
      * 默认构造方法
      */
     private StringHelper() {
@@ -162,23 +152,5 @@ public final class StringHelper {
 
     }
 
-    /**
-     * 判断str 字符串是否包含在filterString 中
-     * 
-     * @param str 待判断的字符串
-     * @return 返回此字符串是否包含在filterString
-     */
-    public static boolean containFilterString(String str) {
-        boolean iscontain = false;
-        if (!Utils.isEmpty(str)) {
-            for (String strTemp : filterString) {
-                if (str.contains(strTemp)) {
-                    iscontain = true;
-                    break;
-                }
-            }
-        }
-        return iscontain;
-    }
 
 }

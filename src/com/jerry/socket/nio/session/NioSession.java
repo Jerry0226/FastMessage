@@ -21,343 +21,362 @@ import com.jerry.socket.nio.service.NioHandlerAdapter;
 
 /**
  * 每一个客户单连接后需要发送一个握手消息来表名身份，发送一个唯一的id，同时发送一个此客户端的描述字符串，用来表示被服务端监控使用 如在zcip
- * 平台中，因为在一个主机一个用户下只能有一个客户端，那么发送(ip+用户名.toUpper()).hashCode的形式，并发送ip地址和用户名 用来在服务端的监控使用
+ * 平台中，因为在一个主机一个用户下只能有一个客户端，那么发送(ip+用户名.toUpper()).hashCode的形式，并发送ip地址和用户名
+ * 用来在服务端的监控使用
  * 
  * @author chm
  */
 public abstract class NioSession implements INioSession {
+
+	private NioMessageFacade nioMessFacade;
+	
+	public void setNioMessageFacade(NioMessageFacade nioMessFacade) {
+		this.nioMessFacade = nioMessFacade;
+	}
     
-    
-    NioHandler niohandler = null;
-    
-    @Override
-    public NioHandler getHandler() {
-        if (niohandler == null) {
-            niohandler = new NioHandlerAdapter();
-        }
-        return niohandler;
+    public NioMessageFacade getNioMessageFacade() {
+    	return this.nioMessFacade;
     }
+	
+	NioHandler niohandler = null;
 
-    @Override
-    public void setHandler(NioHandler niohandler) {
-        this.niohandler = niohandler;
-    }
+	@Override
+	public NioHandler getHandler() {
+		if (niohandler == null) {
+			niohandler = new NioHandlerAdapter();
+		}
+		return niohandler;
+	}
 
-    /** 单位毫秒，针对当前session 有效，如果session 不同消息的超时时间不同，那么需要在发送消息是进行重新的设置 */
-    private int timeOut = FastMessage.RECEIVEMESSAGETIMEOUT;
+	@Override
+	public void setHandler(NioHandler niohandler) {
+		this.niohandler = niohandler;
+	}
 
-    private PackMessage packMeg = new SimplePackMessage();
-    
-    private String clientIp;
+	/** 单位毫秒，针对当前session 有效，如果session 不同消息的超时时间不同，那么需要在发送消息是进行重新的设置 */
+	private int timeOut = FastMessage.RECEIVEMESSAGETIMEOUT;
 
-    public String getClientIp() {
-        return clientIp;
-    }
+	private PackMessage packMeg = new SimplePackMessage();
 
-    public void setClientIp(String clientIp) {
-        this.clientIp = clientIp;
-    }
+	private String clientIp;
 
-    private Selector selector;
-    
-    /**当前的NioSession 是否有效*/
-    private boolean isVaild = true;
+	public String getClientIp() {
+		return clientIp;
+	}
 
-    private SelectionKey skey;
+	public void setClientIp(String clientIp) {
+		this.clientIp = clientIp;
+	}
 
-    public SelectionKey getSkey() {
-        return skey;
-    }
+	private Selector selector;
 
-    public void setSkey(SelectionKey skey) {
-        this.skey = skey;
-    }
+	/** 当前的NioSession 是否有效 */
+	private boolean isVaild = true;
 
-    public Selector getSelector() {
-        return selector;
-    }
+	private SelectionKey skey;
 
-    public void setSelector(Selector selector) {
-        this.selector = selector;
-    }
+	public SelectionKey getSkey() {
+		return skey;
+	}
 
-    public void destory() throws IOException {
-    	try {
-    		isVaild = false;
-            if (skey != null) {
-                skey.cancel();
-            }
-            
-            if (channel != null) {
-                channel.close();
-            }
-    	}
-    	finally {
-    		NioSessionMag.getInstance().deleteNioSession(this);
-    	}
-    	
-        
-       
-        
-    }
-    
-    @Override
-    public boolean isVaild() {
-        return isVaild;
-    }
+	public void setSkey(SelectionKey skey) {
+		this.skey = skey;
+	}
 
-    /**
-     * 消息的处理方式，默认不做任何处理直接返回，用户需要对此进行有效的扩展
-     */
-    private INioMessageWrapper nioMegWrapper = new NioMessageWrapper();
+	public Selector getSelector() {
+		return selector;
+	}
 
-    public INioMessageWrapper getNioMegWrapper() {
-        return nioMegWrapper;
-    }
+	public void setSelector(Selector selector) {
+		this.selector = selector;
+	}
 
-    public void setNioMegAction(INioMessageWrapper nioMegWrapper) {
-        this.nioMegWrapper = nioMegWrapper;
-    }
+	public void destory() {
+		try {
+			isVaild = false;
+			
+			if (skey != null) {
+				skey.cancel();
+			}
 
-    // private final String nioClientToStringMessage;
+			if (channel != null) {
+				channel.close();
+			}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			// TODO: handle exception
+		}
+		
 
-    public int getTimeOut() {
-        return timeOut;
-    }
+	}
 
-    public void setTimeOut(int timeOut) {
-        this.timeOut = timeOut;
-    }
+	@Override
+	public boolean isVaild() {
+		return isVaild;
+	}
 
-    /**被初始化时设置，后续也可以被改变*/
-    private long sessionId;
+	/**
+	 * 消息的处理方式，默认不做任何处理直接返回，用户需要对此进行有效的扩展
+	 */
+	private INioMessageWrapper nioMegWrapper = new NioMessageWrapper();
 
-    public void setSessionId(long sessionId) {
+	public INioMessageWrapper getNioMegWrapper() {
+		return nioMegWrapper;
+	}
+
+	public void setNioMegAction(INioMessageWrapper nioMegWrapper) {
+		this.nioMegWrapper = nioMegWrapper;
+	}
+
+	// private final String nioClientToStringMessage;
+
+	public int getTimeOut() {
+		return timeOut;
+	}
+
+	public void setTimeOut(int timeOut) {
+		this.timeOut = timeOut;
+	}
+
+	/** 被初始化时设置，后续也可以被改变 */
+	private long sessionId;
+
+	public void setSessionId(long sessionId) {
 		this.sessionId = sessionId;
 	}
 
 	private INioFilterChain nioFilterChain = null;
 
-    public long getSessionId() {
-        return sessionId;
-    }
+	public long getSessionId() {
+		return sessionId;
+	}
 
-    private SocketChannel channel;
+	private SocketChannel channel;
 
-    public NioSession(SocketChannel channel, long sessionId, Selector selector) {
-        this.channel = channel;
-        this.sessionId = sessionId;
-        this.selector = selector;
-        // 每一个channel的端口都是不一样的
-    }
+	public NioSession(SocketChannel channel, long sessionId, Selector selector) {
+		this.channel = channel;
+		this.sessionId = sessionId;
+		this.selector = selector;
+		// 每一个channel的端口都是不一样的
+	}
 
-    public SocketChannel getChannel() {
-        return channel;
-    }
+	public SocketChannel getChannel() {
+		return channel;
+	}
 
-    public void setChannel(SocketChannel channel) {
-        this.channel = channel;
-    }
+	public void setChannel(SocketChannel channel) {
+		this.channel = channel;
+	}
 
-    public INioFilterChain getFilterChain() {
-        return nioFilterChain;
-    }
+	public INioFilterChain getFilterChain() {
+		return nioFilterChain;
+	}
 
-    public void setFilterChain(INioFilterChain nioFilterChain) {
-        this.nioFilterChain = nioFilterChain;
-    }
+	public void setFilterChain(INioFilterChain nioFilterChain) {
+		this.nioFilterChain = nioFilterChain;
+	}
 
-    public void closeSession() {
+	public void closeSession() {
+		try {
+			// 失效
+			isVaild = false;
+			if (skey != null) {
+				skey.cancel();
+			}
 
-        try {
-        	//失效
-            isVaild = false;
-            if (skey != null) {
-                skey.cancel();
-            }
-            
-            if (channel != null && channel.isConnected()) {
-                channel.close();
-            }
+			if (channel != null && channel.isConnected()) {
+				channel.close();
+			}
 
-            
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-        finally {
-            NioSessionMag.getInstance().deleteNioSession(this);
-        }
-    }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
-    public Object syncSendMessage(Object message, int operType, long sessionId) throws IOException,
-        InterruptedException {
-        return syncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId);
-    }
+	public Object syncSendMessage(Object message, int operType, long sessionId)
+			throws IOException, InterruptedException {
+		return syncSendMessage(message, FastMessage.MESSAGEEND, operType,
+				sessionId);
+	}
 
-    public Object syncSendMessage(Object message, char state, int operType, long sessionId) throws IOException,
-        InterruptedException {
-        return syncSendMessage(message, state, operType, sessionId, this.timeOut);
-    }
-    
-    
-    public Object syncSendMessage(Object message, int operType, long sessionId, int timeOut) throws IOException,
-    InterruptedException {
-        return syncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId, timeOut);
-    }
-    
-    
-    public Object syncSendMessage(Object message, char state, int operType, long sessionId, int timeOut) throws IOException,
-    InterruptedException {
-//
-//    System.out.println("this.getChannel().socket().getSendBufferSize(): " + this.getChannel().socket().getSendBufferSize());
-//    System.out.println("this.getChannel().socket().getReceiveBufferSize(): " + this.getChannel().socket().getReceiveBufferSize());
-    Message messageResult = null;
-    byte[] messageTemp = packMessage(message, state, operType, sessionId);
-    ByteBuffer bytemtemp = ByteBuffer.wrap(messageTemp);
-//    int writeSize = this.getChannel().write(bytemtemp);
-//    System.out.println("writeSize: " + writeSize);
-//    while (writeSize <= 0) {
-//        writeSize = this.getChannel().write(bytemtemp);
-//        Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
-//    }
-    
-    //针对缓冲区写满，导致writesize 大于零，但是没有把所有字节全部写成功的情况
-//    if (writeSize > 0 && bytemtemp.remaining() > 0 ) {
-//    	sendMessage(bytemtemp);
-//    }
-    sendMessage(bytemtemp);
+	public Object syncSendMessage(Object message, char state, int operType,
+			long sessionId) throws IOException, InterruptedException {
+		return syncSendMessage(message, state, operType, sessionId,
+				this.timeOut);
+	}
 
-    long nowMin = System.currentTimeMillis();
-    boolean isContinue = true;
-    while (isContinue) {
+	public Object syncSendMessage(Object message, int operType, long sessionId,
+			int timeOut) throws IOException, InterruptedException {
+		return syncSendMessage(message, FastMessage.MESSAGEEND, operType,
+				sessionId, timeOut);
+	}
 
-        messageResult = NioMessageFacade.getInstance().getAndDelMessage(sessionId);
-        // 消息必须isReady 才能被返回使用
-        if (null != messageResult) {
-            return messageResult;
-        }
-        if ((System.currentTimeMillis() - nowMin) > timeOut) {
-            isContinue = false;
-            break;
-        }
-        Thread.sleep(FastMessage.RECEIVEMESSAGEWAITTIME);
-    }
-    if (!isContinue) {
+	public Object syncSendMessage(Object message, char state, int operType,
+			long sessionId, int timeOut) throws IOException,
+			InterruptedException {
 
-        messageResult = new SimpleMessage();
-        messageResult.setSessionId(sessionId);
-        messageResult.setReady(true);
-        messageResult.setTimeOut(true);
-    }
-    return this.getNioMegWrapper().dealWithMessage(messageResult);
-}
-    
-    public void sendMessage(ByteBuffer bytemtemp) throws IOException, InterruptedException {
-    	int writeSize = this.getChannel().write(bytemtemp);
-    	while (writeSize <= 0) {
-            writeSize = this.getChannel().write(bytemtemp);
-            Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
-        }
-    	
-//    	System.out.println("writeSize: " + writeSize);
-//      System.out.println(bytemtemp.limit() + " bytemtemp.limit() : " + bytemtemp.capacity() + " -- " + bytemtemp.remaining() + " -- " + bytemtemp.limit()+ " -- " + bytemtemp.position());
-        
-    	Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
-        if (writeSize > 0 && bytemtemp.remaining() > 0 ) {
-        	sendMessage(bytemtemp);
-        }
-    }
-    
+		Message messageResult = null;
+		byte[] messageTemp = packMessage(message, state, operType, sessionId);
+		ByteBuffer bytemtemp = ByteBuffer.wrap(messageTemp);
+		writeAndFlushMessage(bytemtemp);
 
-    public Object syncSendMessage(Object message, char state, int operType) throws IOException, InterruptedException {
+		long nowMin = System.currentTimeMillis();
+		boolean isContinue = true;
+		while (isContinue) {
 
-        long sessionId = System.nanoTime();
-        return syncSendMessage(message, state, operType, sessionId);
-    }
-    
-    public Object syncSendMessage(Object message, int operType, int timeOut) throws IOException, InterruptedException {
+			messageResult = nioMessFacade.getAndDelMessage(
+					sessionId);
+			// 消息必须isReady 才能被返回使用
+			if (null != messageResult) {
+				return messageResult;
+			}
+			if ((System.currentTimeMillis() - nowMin) > timeOut) {
+				isContinue = false;
+				break;
+			}
+			Thread.sleep(FastMessage.RECEIVEMESSAGEWAITTIME);
+		}
+		if (!isContinue) {
 
-        long sessionId = System.nanoTime();
-        return syncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId, timeOut);
-    }
+			messageResult = new SimpleMessage();
+			messageResult.setSessionId(sessionId);
+			messageResult.setReady(true);
+			messageResult.setInvalid(true);
+		}
+		return this.getNioMegWrapper().dealWithMessage(messageResult);
+	}
 
-    public Object syncSendMessage(Object message, int operType) throws IOException, InterruptedException {
+	/**
+	 * 
+	 * <br>
+	 * 向管道中写数据</br>
+	 * 
+	 * 针对缓冲区写满，导致writesize 大于零，没有把所有字节全部写成功的问题，写操作需要判断字节数据是否被全部写入管道
+	 * 
+	 * @param bytemtemp
+	 *            ByteBuffer
+	 * @throws IOException
+	 *             异常
+	 * @throws InterruptedException
+	 *             异常
+	 */
+	private void writeAndFlushMessage(ByteBuffer bytemtemp) throws IOException,
+			InterruptedException {
+		int writeSize = this.getChannel().write(bytemtemp);
+		while (writeSize <= 0) {
+			writeSize = this.getChannel().write(bytemtemp);
+			Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
+		}
 
-        long sessionId = System.nanoTime();
-        return syncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId);
-    }
+		Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
+		if (writeSize > 0 && bytemtemp.remaining() > 0) {
+			writeAndFlushMessage(bytemtemp);
+		}
+	}
 
-    public void asyncSendMessage(Object message, char state, int operType, long sessionId) throws IOException,
-        InterruptedException {
-        byte[] messageTemp = packMessage(message, state, operType, sessionId);
-        ByteBuffer bytemtemp = ByteBuffer.wrap(messageTemp);
-        sendMessage(bytemtemp);
-//        int writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
-//        while (writeSize <= 0) {
-//            Thread.sleep(FastMessage.SENDMESSAGEWAITTIME);
-//            writeSize = this.getChannel().write(ByteBuffer.wrap(messageTemp));
-//        }
-    }
+	public Object syncSendMessage(Object message, char state, int operType)
+			throws IOException, InterruptedException {
 
-    /**
-     * 异步发送消息，不需要同步等待结果
-     * 
-     * @param message 发送的消息，消息只能有两种类型，一个是字符串String类型，一个是字节码数据
-     * @param state 状态，'1' 表示完成，'0' 表示为完成
-     * @param operType 操作类型
-     * @throws IOException 操作异常
-     * @throws InterruptedException 线程中断异常
-     */
-    public void asyncSendMessage(Object message, char state, int operType) throws IOException, InterruptedException {
-        long sessionId = System.nanoTime();
-        asyncSendMessage(message, state, operType, sessionId);
-    }
+		long sessionId = System.nanoTime();
+		return syncSendMessage(message, state, operType, sessionId);
+	}
 
-    
-    /**
-     * 异步发送消息，不需要同步等待结果
-     * 
-     * @param message 发送的消息，消息只能有两种类型，一个是字符串String类型，一个是字节码数据
-     * @param operType 操作类型
-     * @throws IOException 操作异常
-     * @throws InterruptedException 线程中断异常
-     */
-    public void asyncSendMessage(Object message, int operType) throws IOException, InterruptedException {
-        long sessionId = System.nanoTime();
-        asyncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId);
-    }
-    
-    /**
-     * 异步发送消息，不需要同步等待结果
-     * 
-     * @param message 发送的消息，消息只能有两种类型，一个是字符串String类型，一个是字节码数据
-     * @param operType 操作类型
-     * @param sessionId 会话id
-     * @throws IOException 操作异常
-     * @throws InterruptedException 线程中断异常
-     */
-    public void asyncSendMessage(Object message, int operType, long sessionId) throws IOException, InterruptedException {
-        asyncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId);
-    }
+	public Object syncSendMessage(Object message, int operType, int timeOut)
+			throws IOException, InterruptedException {
 
-    private byte[] packMessage(Object message, char state, int operType, long sessionId)
-        throws UnsupportedEncodingException {
+		long sessionId = System.nanoTime();
+		return syncSendMessage(message, FastMessage.MESSAGEEND, operType,
+				sessionId, timeOut);
+	}
 
-        byte[] messageBody = null;
-        if (message instanceof String) {
-            String str = (String) message;
-            messageBody = str.getBytes(FastMessage.CODECCHARSET);
-        }
-        else if (message instanceof byte[]) {
-            messageBody = (byte[]) message;
-        }
-        else {
-            throw new ClassCastException("No support type, except for String and byte[]");
-        }
-        return packMeg.packMessage(messageBody.length, state, sessionId, operType, messageBody);
-    }
+	public Object syncSendMessage(Object message, int operType)
+			throws IOException, InterruptedException {
 
-    
+		long sessionId = System.nanoTime();
+		return syncSendMessage(message, FastMessage.MESSAGEEND, operType,
+				sessionId);
+	}
+
+	public void asyncSendMessage(Object message, char state, int operType,
+			long sessionId) throws IOException, InterruptedException {
+		byte[] messageTemp = packMessage(message, state, operType, sessionId);
+		ByteBuffer bytemtemp = ByteBuffer.wrap(messageTemp);
+		writeAndFlushMessage(bytemtemp);
+	}
+
+	/**
+	 * 异步发送消息，不需要同步等待结果
+	 * 
+	 * @param message
+	 *            发送的消息，消息只能有两种类型，一个是字符串String类型，一个是字节码数据
+	 * @param state
+	 *            状态，'1' 表示完成，'0' 表示为完成
+	 * @param operType
+	 *            操作类型
+	 * @throws IOException
+	 *             操作异常
+	 * @throws InterruptedException
+	 *             线程中断异常
+	 */
+	public void asyncSendMessage(Object message, char state, int operType)
+			throws IOException, InterruptedException {
+		long sessionId = System.nanoTime();
+		asyncSendMessage(message, state, operType, sessionId);
+	}
+
+	/**
+	 * 异步发送消息，不需要同步等待结果
+	 * 
+	 * @param message
+	 *            发送的消息，消息只能有两种类型，一个是字符串String类型，一个是字节码数据
+	 * @param operType
+	 *            操作类型
+	 * @throws IOException
+	 *             操作异常
+	 * @throws InterruptedException
+	 *             线程中断异常
+	 */
+	public void asyncSendMessage(Object message, int operType)
+			throws IOException, InterruptedException {
+		long sessionId = System.nanoTime();
+		asyncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId);
+	}
+
+	/**
+	 * 异步发送消息，不需要同步等待结果
+	 * 
+	 * @param message
+	 *            发送的消息，消息只能有两种类型，一个是字符串String类型，一个是字节码数据
+	 * @param operType
+	 *            操作类型
+	 * @param sessionId
+	 *            会话id
+	 * @throws IOException
+	 *             操作异常
+	 * @throws InterruptedException
+	 *             线程中断异常
+	 */
+	public void asyncSendMessage(Object message, int operType, long sessionId)
+			throws IOException, InterruptedException {
+		asyncSendMessage(message, FastMessage.MESSAGEEND, operType, sessionId);
+	}
+
+	private byte[] packMessage(Object message, char state, int operType,
+			long sessionId) throws UnsupportedEncodingException {
+
+		byte[] messageBody = null;
+		if (message instanceof String) {
+			String str = (String) message;
+			messageBody = str.getBytes(FastMessage.CODECCHARSET);
+		} else if (message instanceof byte[]) {
+			messageBody = (byte[]) message;
+		} else {
+			throw new ClassCastException(
+					"No support type, except for String and byte[]");
+		}
+		return packMeg.packMessage(messageBody.length, state, sessionId,
+				operType, messageBody);
+	}
 
 }

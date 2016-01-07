@@ -9,7 +9,6 @@ public class SimpleMessage implements Message {
     
     public long sessionId;
     
-    private boolean isTimeout = false;
     
     public long getSessionId() {
         return sessionId;
@@ -26,15 +25,25 @@ public class SimpleMessage implements Message {
     /**消息是否完成，用户已经读取了消息*/
     private boolean isComplete;
     
-//    private static final int SPANSIZE = 2048;
     
     /**消息的失效时间，现在规定在 30秒，单位毫秒,在这么长的时间内没有被处理就认为失效*/
     private int invalidTime = 30000;
-    
-//    /***
-//     * 消息体的默认长度
-//     */
-//    private int length;
+
+    public int getInvalidTime() {
+		return invalidTime;
+	}
+
+	public void setInvalidTime(int invalidTime) {
+		this.invalidTime = invalidTime;
+	}
+
+	private NioSession nioSession;
+
+    /**
+     * 消息是否失效
+     */
+	private boolean isInvalid = false;
+	
     
     private byte[] messageBody ;
     
@@ -66,19 +75,12 @@ public class SimpleMessage implements Message {
      * @return 是否失效
      */
     public boolean isInvalid() {
-        if ((System.currentTimeMillis() - createTime) > invalidTime) {
+        if ((System.currentTimeMillis() - createTime) > invalidTime || this.isInvalid) {
             return true;
         }
         return false;
     }
     
-    
-//    /**
-//     * 增加消息片段,此处直接获取一个消息体，不再是每一个消息的片段
-//     */
-//    public void addMessageFragment(byte[] fragment) {
-//        messageBody = fragment;
-//    }
 
 //    此处是处理不定长的消息日志
     /**
@@ -136,20 +138,10 @@ public class SimpleMessage implements Message {
         this.operType = type;
     }
 
-    public boolean isTimeOut() {
-        return this.isTimeout;
-    }
-
-    public void setTimeOut(boolean timeOut) {
-        this.isTimeout = timeOut;
-    }
-    
     @Override
     public String toString() {
         return "sessionId: " + sessionId + ", operType: " + this.operType + ", length: " + this.offset;
     }
-
-    private NioSession nioSession;
     
     @Override
     public NioSession getNioSession() {
@@ -160,5 +152,10 @@ public class SimpleMessage implements Message {
     public void setNioSession(NioSession nioSession) {
         this.nioSession = nioSession;        
     }
+
+	@Override
+	public boolean setInvalid(boolean isInvalid) {
+		return this.isInvalid  = isInvalid;
+	}
 
 }

@@ -8,6 +8,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
+import com.jerry.socket.nio.message.NioMessageFacade;
 import com.jerry.socket.nio.message.wrapper.INioMessageWrapper;
 import com.jerry.socket.nio.read.SingleMessageRead;
 import com.jerry.socket.nio.service.NioHandler;
@@ -17,7 +18,28 @@ import com.jerry.socket.nio.session.NioSessionSimple;
 
 public class NioSocketConnector implements NioConnector {
     
+	private NioMessageFacade nioMessFacade;
+	
+	public NioMessageFacade getNioMessFacade() {
+		return nioMessFacade;
+	}
+
+	public NioSocketConnector() {
+		this.nioMessFacade = new NioMessageFacade();
+	}
+	
     NioHandler niohandler = null;
+    
+    
+    public void destory() {
+    	try {
+    		this.nioSession.destory();
+    		this.selRead.close();
+    	}catch (Exception e) {
+    		e.printStackTrace();
+			// TODO: handle exception
+		}
+    }
     
     @Override
     public NioHandler getHandler() {
@@ -92,6 +114,10 @@ public class NioSocketConnector implements NioConnector {
                             //创建nioSession 对象
                             long sessionId = System.currentTimeMillis();
                             nioSession = new NioSessionSimple(channel, sessionId, selRead);
+                            
+                            
+                            nioSession.setNioMessageFacade(this.nioMessFacade);
+                            
                             nioSession.setHandler(getHandler());
                             try{
                             	nioSession.getHandler().sessionOpened(nioSession);
@@ -160,7 +186,6 @@ public class NioSocketConnector implements NioConnector {
         public void run() {
             try {
             while (isContinue) {
-                
                     // 如果选择器在指定时间内没有任何返回那么说明主控已经关闭
                     selRead.select();
                     Iterator<?> it = selRead.selectedKeys().iterator();

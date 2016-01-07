@@ -13,19 +13,30 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.jerry.socket.nio.authentication.NioFirstHand;
-import com.jerry.socket.nio.authentication.SimpleNioFirstHand;
 import com.jerry.socket.nio.common.FastMessage;
+import com.jerry.socket.nio.message.NioMessageFacade;
 import com.jerry.socket.nio.message.wrapper.INioMessageWrapper;
 import com.jerry.socket.nio.message.wrapper.NioMessageWrapper;
 import com.jerry.socket.nio.read.SingleMessageRead;
 import com.jerry.socket.nio.service.NioHandler;
 import com.jerry.socket.nio.service.NioHandlerAdapter;
 import com.jerry.socket.nio.session.NioSession;
-import com.jerry.socket.nio.session.NioSessionMag;
 import com.jerry.socket.nio.session.NioSessionSimple;
 
 public class NioSocketAcceptor implements NioAcceptor {
+	
+	/***
+	 * 消息队列操作类
+	 */
+	private NioMessageFacade nioMessFacade;
+	
+	public NioMessageFacade getNioMessFacade() {
+		return nioMessFacade;
+	}
+
+	public NioSocketAcceptor() {
+		this.nioMessFacade = new NioMessageFacade();
+	}
     
     NioHandler niohandler = null;
 
@@ -34,17 +45,6 @@ public class NioSocketAcceptor implements NioAcceptor {
     /** 单个selector上的消息内容读取的线程数 */
     private int readMessageThreadCount = FastMessage.DEFAULTREADTHREADCOUNT;
 
-
-    /** 首次会话，用来做握手验证，默认直接返回成功，用户需要根据自己的需要进行验证操作 */
-    private NioFirstHand firstSession = new SimpleNioFirstHand();
-
-    public NioFirstHand getFirstSession() {
-        return firstSession;
-    }
-
-    public void setFirstSession(NioFirstHand firstSession) {
-        this.firstSession = firstSession;
-    }
 
     public static AtomicBoolean isWakeUped = new AtomicBoolean(false);
 
@@ -61,8 +61,6 @@ public class NioSocketAcceptor implements NioAcceptor {
         this.nioMegWrapper = messageWrapper;
 
     }
-
-//    Selector readSelector;
 
     Selector serverSelector;
 
@@ -83,7 +81,6 @@ public class NioSocketAcceptor implements NioAcceptor {
         ssc.register(serverSelector, SelectionKey.OP_ACCEPT);
 
         new Thread(new ServerMonitor(ssc)).start();
-//        System.out.println("ssc: " + ssc.socket().getLocalPort() + ",ssc.validOps(): " + ssc.validOps());
 
     }
 
@@ -92,9 +89,7 @@ public class NioSocketAcceptor implements NioAcceptor {
         // 设置读取消息的线程大小，根据外面的定义来实现
         private ThreadPoolExecutor poolStartRead = (ThreadPoolExecutor) Executors
             .newFixedThreadPool(getReadMessageThreadCount());
-
-        // 设置读取消息的线程大小，根据外面的定义来实现
-//        private ThreadPoolExecutor poolStartAccept = (ThreadPoolExecutor) Executors.newFixedThreadPool(2);
+        
 
         private ServerSocketChannel ssc;
 
@@ -127,7 +122,9 @@ public class NioSocketAcceptor implements NioAcceptor {
                             NioSession nioSession = new NioSessionSimple(ch, sessionId, serverSelector);
                             nioSession.setHandler(getHandler());
                             nioSession.setClientIp(ch.socket().getInetAddress().getHostAddress());
-                            NioSessionMag.getInstance().addAgent(nioSession);
+                            
+                            //设置session 的消息管理类
+                            nioSession.setNioMessageFacade(nioMessFacade);
                             
                             //当连接已经连接后的回调函数
                             nioSession.getHandler().sessionOpened(nioSession);
@@ -135,7 +132,6 @@ public class NioSocketAcceptor implements NioAcceptor {
                             System.out.println("nioSession : " + nioSession.getSessionId() + " hostIp: " + ch.socket().getInetAddress().getHostAddress() + " accept....");
 
                             ch.register(serverSelector, SelectionKey.OP_READ, nioSession);
-//                            poolStartAccept.execute(new StartRegRead(ch, nioSession));
 
                         }
                         if (skey.isReadable()) {
@@ -163,7 +159,6 @@ public class NioSocketAcceptor implements NioAcceptor {
             catch (Exception e) {
                 System.out.println("服务端监听异常");
                 //出现异常时，清空所有的连接
-                NioSessionMag.getInstance().clear();
                 e.printStackTrace();
             }
 

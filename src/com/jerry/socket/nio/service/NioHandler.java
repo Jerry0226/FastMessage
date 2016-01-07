@@ -7,6 +7,8 @@ import com.jerry.socket.nio.session.NioSession;
 
 
 public interface NioHandler {
+	
+	
     void sessionOpened(NioSession session) throws Exception;
 
     /**
